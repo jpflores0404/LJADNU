@@ -1,0 +1,13 @@
+PRAGMA foreign_keys = OFF;
+DROP TABLE IF EXISTS ApgarScore;
+DROP TABLE IF EXISTS LabResult;
+DROP TABLE IF EXISTS Medication;
+DROP TABLE IF EXISTS NewbornRecord;
+DROP TABLE IF EXISTS NurseNote;
+DROP TABLE IF EXISTS OutputChart;
+DROP TABLE IF EXISTS PostpartumRecord;
+DROP TABLE IF EXISTS UltrasoundResult;
+DROP TABLE IF EXISTS VitalSign;
+DROP TABLE IF EXISTS PhysicianOrder;
+DROP TABLE IF EXISTS MaternalPatient;
+PRAGMA foreign_keys = ON;
