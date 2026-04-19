@@ -1,65 +1,134 @@
-import Image from "next/image";
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import { Users, Baby, Activity, AlertCircle } from 'lucide-react';
 
-export default function Home() {
+export default async function Dashboard() {
+  const [totalMaternal, activeMaternal, totalNewborn, recentAdmissions] = await Promise.all([
+    prisma.maternalPatient.count(),
+    prisma.maternalPatient.count({ where: { status: 'Active' } }),
+    prisma.newbornRecord.count(),
+    prisma.maternalPatient.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        dateAdmitted: true,
+        admittingDiagnosis: true,
+        status: true,
+        admissionNumber: true
+      }
+    })
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="max-w-7xl mx-auto space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
+        <p className="text-slate-500 mt-2">Overview of active patients and recent admissions</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          title="Total Maternal Records" 
+          value={totalMaternal} 
+          icon={Users} 
+          color="bg-blue-500" 
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+        <StatCard 
+          title="Active Admissions" 
+          value={activeMaternal} 
+          icon={Activity} 
+          color="bg-blue-600" 
+        />
+         <StatCard 
+          title="Total Newborn Records" 
+          value={totalNewborn} 
+          icon={Baby} 
+          color="bg-sky-500" 
+        />
+        <StatCard 
+          title="Critical Alerts" 
+          value={0} 
+          icon={AlertCircle} 
+          color="bg-slate-400" 
+        />
+      </div>
+
+      <div className="glass-card overflow-hidden">
+        <div className="p-6 glass-header flex justify-between items-center">
+          <h2 className="text-xl font-semibold text-slate-800">Recent Admissions</h2>
+          <Link href="/maternal/new" className="glass-button-primary px-4 py-2 rounded-xl font-medium transition-all text-sm">
+            + New Admission
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="glass-header text-slate-700 text-sm">
+                <th className="p-4 font-semibold">Patient Name</th>
+                <th className="p-4 font-semibold">Admission #</th>
+                <th className="p-4 font-semibold">Date Admitted</th>
+                <th className="p-4 font-semibold">Diagnosis</th>
+                <th className="p-4 font-semibold">Status</th>
+                <th className="p-4 font-semibold text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentAdmissions.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500">
+                    No recent admissions found.
+                  </td>
+                </tr>
+              ) : (
+                recentAdmissions.map((patient) => (
+                  <tr key={patient.id} className="border-b border-white/40 hover:bg-white/30 transition-colors">
+                    <td className="p-4 font-semibold text-slate-900">
+                      {patient.lastName}, {patient.firstName}
+                    </td>
+                    <td className="p-4 text-slate-700">{patient.admissionNumber}</td>
+                    <td className="p-4 text-slate-700">
+                      {new Date(patient.dateAdmitted).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 text-slate-700 truncate max-w-xs">{patient.admittingDiagnosis}</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full border text-xs font-semibold backdrop-blur-sm ${
+                        patient.status === 'Active' 
+                          ? 'bg-emerald-100/50 text-emerald-800 border-emerald-300/50' 
+                          : 'bg-slate-100/50 text-slate-700 border-slate-300/50'
+                      }`}>
+                        {patient.status}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <Link href={`/maternal/${patient.id}`} className="text-blue-700 hover:text-blue-900 bg-white/40 hover:bg-white/80 px-3 py-1.5 rounded-lg border border-white/60 text-sm font-semibold shadow-sm transition-all">
+                        View Chart
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </main>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon: Icon, color }: { title: string, value: number, icon: any, color: string }) {
+  return (
+    <div className="glass-card p-6 flex items-center gap-5 hover:scale-[1.02] transition-transform duration-300">
+      <div className={`${color} p-4 rounded-2xl text-white shadow-lg backdrop-blur-md bg-opacity-90`}>
+        <Icon size={26} />
+      </div>
+      <div>
+        <p className="text-sm font-medium text-slate-500">{title}</p>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+      </div>
     </div>
   );
 }

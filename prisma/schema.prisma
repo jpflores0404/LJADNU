@@ -1,0 +1,359 @@
+// Maternity & Birthing Home EHR — Full Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// ─── A. Patient Data Sheet (Mother) ───────────────────────────────────────────
+
+model MaternalPatient {
+  id                String   @id @default(cuid())
+  admissionNumber   String   @unique
+  bedNumber         String?
+  lastName          String
+  firstName         String
+  middleName        String?
+  age               Int
+  gender            String   @default("Female")
+  civilStatus       String   @default("Single")
+  address           String
+  religion          String?
+  dateOfBirth       DateTime
+  placeOfBirth      String?
+  nationality       String   @default("Filipino")
+  occupation        String?
+  employer          String?
+
+  // PhilHealth
+  philhealthNumber  String?
+  philhealthStatus  String?
+  philhealthMemberName     String?
+  philhealthMemberRelation String?
+  philhealthMemberAddress  String?
+  philhealthMemberContact  String?
+
+  // Emergency Contact/Family
+  husbandName       String?
+  husbandOccupation String?
+  husbandEmployer   String?
+  contactNumber     String
+  
+  fatherName        String?
+  fatherAddress     String?
+  motherName        String?
+  motherAddress     String?
+
+  companionName     String?
+  companionRelation String?
+  companionContact  String?
+  companionAddress  String?
+
+  // Admission Info
+  dateAdmitted      DateTime @default(now())
+  timeAdmitted      String?
+  admittedBy        String?
+  dateDischarged    DateTime?
+  timeDischarged    String?
+  dischargedBy      String?
+  attendingPhysician String?
+
+  // Diagnosis & Orders
+  admittingDiagnosis  String?
+  finalDiagnosis      String?
+
+  // OB History (GTPAL)
+  gravida           Int      @default(0)
+  term              Int      @default(0)
+  preterm           Int      @default(0)
+  abortion          Int      @default(0)
+  living            Int      @default(0)
+  lmp               DateTime?
+  edc               DateTime?
+  aog               String?
+  bow               String?
+  allergy           String?
+  preExistingIllness String?
+
+  // Physical Exam
+  generalAppearance String?
+  pallor            String?
+  pale              String?
+  sunkenEye         String?
+  edema             String?
+  
+  // Baseline Vitals at admission
+  temperature       String?
+  bloodPressure     String?
+  respiratoryRate   String?
+  pulseRate         String?
+
+  fundalHeight      String?
+  fetalHeartTone    String?
+  internalExam      String?
+
+  // Blood Typing & Cross Matching
+  bloodTypeABO      String?
+  bloodTypeRh       String?
+  antiA             String?
+  antiB             String?
+  antiD             String?
+
+  // Status
+  status            String   @default("Active")
+
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  newborns          NewbornRecord[]
+  vitalSigns        VitalSign[]
+  medications       Medication[]
+  nurseNotes        NurseNote[]
+  outputCharts      OutputChart[]
+  labResults        LabResult[]
+  ultrasoundResults UltrasoundResult[]
+  postpartumRecords PostpartumRecord[]
+  physicianOrders   PhysicianOrder[]
+}
+
+// ─── B. Newborn Record ────────────────────────────────────────────────────────
+
+model NewbornRecord {
+  id                     String   @id @default(cuid())
+  maternalPatientId      String
+  maternalPatient        MaternalPatient @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+
+  name                   String
+  gender                 String
+  dateOfBirth            DateTime
+  timeOfBirth            String?
+  dateAdmitted           DateTime @default(now())
+  timeAdmitted           String?
+
+  // Clinical
+  icdCode                String?
+  admissionDiagnosis     String?
+  finalDiagnosis         String?
+  mannerOfDelivery       String   @default("NSD")
+
+  // Physical Examination
+  headCircumference      Float?
+  chestCircumference     Float?
+  abdominalCircumference Float?
+  length                 Float?
+  weight                 Float?
+
+  // Status
+  status                 String   @default("Active")
+
+  // Timestamps
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  vitalSigns             VitalSign[]
+  medications            Medication[]
+  nurseNotes             NurseNote[]
+  outputCharts           OutputChart[]
+  physicianOrders        PhysicianOrder[]
+  apgarScores            ApgarScore[]
+}
+
+// ─── C. Relational Tables (Shared — Mother & Newborn) ─────────────────────────
+
+model VitalSign {
+  id                String   @id @default(cuid())
+  date              String
+  time              String
+  bloodPressure     String?
+  pulseRate         String?
+  respiratoryRate   String?
+  temperature       String?
+  signature         String?
+
+  maternalPatientId String?
+  maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  newbornRecordId   String?
+  newbornRecord     NewbornRecord?   @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+}
+
+model Medication {
+  id                String   @id @default(cuid())
+  medicationName    String
+  dateGiven         String
+  timeGiven         String?
+  route             String   @default("IM")
+  givenBy           String?
+
+  maternalPatientId String?
+  maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  newbornRecordId   String?
+  newbornRecord     NewbornRecord?   @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+}
+
+model NurseNote {
+  id                String   @id @default(cuid())
+  date              String
+  time              String?
+  shift             String?
+  focus             String?
+  data              String?
+  action            String?
+  response          String?
+
+  maternalPatientId String?
+  maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  newbornRecordId   String?
+  newbornRecord     NewbornRecord?   @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+}
+
+model OutputChart {
+  id                String   @id @default(cuid())
+  date              String
+  shift             String   @default("AM")
+  stoolCount        Int      @default(0)
+  urineCount        Int      @default(0)
+
+  maternalPatientId String?
+  maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  newbornRecordId   String?
+  newbornRecord     NewbornRecord?   @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+}
+
+model PhysicianOrder {
+  id                String   @id @default(cuid())
+  date              String
+  notes             String
+
+  maternalPatientId String?
+  maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  newbornRecordId   String?
+  newbornRecord     NewbornRecord?   @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+
+  createdAt         DateTime @default(now())
+}
+
+// ─── D. Specialized — Mother Only ─────────────────────────────────────────────
+
+model LabResult {
+  id                  String   @id @default(cuid())
+  maternalPatientId   String
+  maternalPatient     MaternalPatient @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  datePerformed       String?
+  remarks             String?
+
+  // Hematology
+  wbcCount            String?
+  rbcCount            String?
+  hemoglobin          String?
+  hematocrit          String?
+  mcv                 String?
+  mch                 String?
+  mchc                String?
+  neutrophils         String?
+  lymphocytes         String?
+  monocytes           String?
+  eosinophils         String?
+  basophils           String?
+  plateletCount       String?
+
+  // Urinalysis
+  urineColor          String?
+  urineTransparency   String?
+  urineReaction       String?
+  urinePH             String?
+  urineSpecificGravity String?
+  urineGlucose        String?
+  urineProtein        String?
+  urineWBC            String?
+  urineRBC            String?
+  urineEpithelialCells String?
+  urineMicroscopicOther String?
+
+  // Blood Typing
+  bloodTypeABO        String?
+  bloodTypeRh         String?
+  antiA               String?
+  antiB               String?
+  antiD               String?
+
+  createdAt           DateTime @default(now())
+}
+
+model UltrasoundResult {
+  id                String   @id @default(cuid())
+  maternalPatientId String
+  maternalPatient   MaternalPatient @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  datePerformed     String?
+  impression        String?
+
+  createdAt         DateTime @default(now())
+}
+
+model PostpartumRecord {
+  id                   String   @id @default(cuid())
+  maternalPatientId    String
+  maternalPatient      MaternalPatient @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
+  assessmentTime       String
+  hoursLabel           String?
+  rapidAssessment      String?
+  bleeding             String?
+  uterusFirmness       String?
+  maternalBP           String?
+  pulse                String?
+  temperature          String?
+  urineVoided          String?
+  vulvaStatus          String?
+  newbornBreathing     String?
+  newbornWarmth        String?
+  newbornAbnormalSigns String?
+  feedingObserved      String?
+  comments             String?
+
+  // Planned Treatment — stored as JSON strings
+  motherTreatments     String?  // JSON: [{time, treatment}]
+  newbornTreatments    String?  // JSON: [{time, treatment}]
+  ifReferred           String?
+  ifDeath              String?
+
+  // Advise and Counsel — stored as JSON strings
+  adviseMotherChecklist  String?  // JSON: string[]
+  adviseBabyChecklist    String?  // JSON: string[]
+
+  // Preventive Measures — stored as JSON strings
+  preventiveMotherChecklist String? // JSON: string[]
+  preventiveBabyChecklist   String? // JSON: string[]
+
+  createdAt            DateTime @default(now())
+}
+
+// ─── E. Specialized — Newborn Only ────────────────────────────────────────────
+
+model ApgarScore {
+  id                 String   @id @default(cuid())
+  newbornRecordId    String
+  newbornRecord      NewbornRecord @relation(fields: [newbornRecordId], references: [id], onDelete: Cascade)
+  minuteType         String   @default("1min")
+  heartRate          Int      @default(0)
+  respiratoryEffort  Int      @default(0)
+  muscleTone         Int      @default(0)
+  reflexIrritability Int      @default(0)
+  skinColor          Int      @default(0)
+  totalScore         Int      @default(0)
+
+  createdAt          DateTime @default(now())
+}
