@@ -1,12 +1,13 @@
 // Maternity & Birthing Home EHR — Full Database Schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 // ─── A. Patient Data Sheet (Mother) ───────────────────────────────────────────
