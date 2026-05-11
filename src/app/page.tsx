@@ -113,11 +113,12 @@ export default async function Dashboard() {
                     <td className="p-4 font-semibold text-slate-900 flex items-center gap-2">
                       {patient.lastName}, {patient.firstName}
                       {patient.vitalSigns[0] && isMaternalCritical(patient.vitalSigns[0]) && (
-                        <AlertCircle
-                          size={16}
-                          className="text-rose-500 animate-pulse"
-                          title={getMaternalCriticalReasons(patient.vitalSigns[0]).join(" | ")}
-                        />
+                        <span title={getMaternalCriticalReasons(patient.vitalSigns[0]).join(" | ")}>
+                          <AlertCircle
+                            size={16}
+                            className="text-rose-500 animate-pulse"
+                          />
+                        </span>
                       )}
                     </td>
                     <td className="p-4 text-slate-700">{patient.admissionNumber}</td>
