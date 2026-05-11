@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { Plus, Trash2, Save, Edit, X } from "lucide-react";
 import { addVitalSign, deleteVitalSign, editVitalSign } from "@/app/actions/subrecords";
 
+function isRenderableImage(value: string) {
+  return value.startsWith("data:image/") || value.startsWith("/uploads/") || value.startsWith("http");
+}
+
 export default function DynamicVitalsTable({
   patientId,
   initialVitals,
@@ -127,7 +131,7 @@ export default function DynamicVitalsTable({
                   <td className="p-3 text-slate-700">{v.temperature}</td>
                   <td className="p-3 text-slate-500 italic">
                     {v.signature ? (
-                      v.signature.startsWith('/uploads/') ? (
+                      isRenderableImage(v.signature) ? (
                         <img src={v.signature} alt="Signature" className="h-8 w-auto object-contain rounded border border-slate-200 bg-white" />
                       ) : (
                         v.signature

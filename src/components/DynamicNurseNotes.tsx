@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Plus, Trash2, Save, Edit, X } from "lucide-react";
 import { addNurseNote, deleteNurseNote, editNurseNote } from "@/app/actions/subrecords";
 
+function isRenderableImage(value: string) {
+  return value.startsWith("data:image/") || value.startsWith("/uploads/") || value.startsWith("http");
+}
+
 export default function DynamicNurseNotes({ patientId, initialNotes, isNewborn = false }: { patientId: string, initialNotes: any[], isNewborn?: boolean }) {
   const [notes, setNotes] = useState(initialNotes);
   const [isAdding, setIsAdding] = useState(false);
@@ -164,7 +168,7 @@ export default function DynamicNurseNotes({ patientId, initialNotes, isNewborn =
                 <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-2">
                     <span className="text-xs italic text-slate-500">Signed by:</span>
                     {note.signature ? (
-                      note.signature.startsWith('/uploads/') ? (
+                      isRenderableImage(note.signature) ? (
                         <img src={note.signature} alt="Signature" className="h-10 w-auto object-contain rounded border border-slate-200 bg-white inline-block" />
                       ) : (
                         <span className="text-sm font-medium text-slate-800">{note.signature}</span>

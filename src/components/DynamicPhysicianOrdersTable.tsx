@@ -4,6 +4,10 @@ import { useState } from "react";
 import { Plus, Trash2, Save, Edit, X } from "lucide-react";
 import { addPhysicianOrder, deletePhysicianOrder, editPhysicianOrder } from "@/app/actions/subrecords";
 
+function isRenderableImage(value: string) {
+  return value.startsWith("data:image/") || value.startsWith("/uploads/") || value.startsWith("http");
+}
+
 export default function DynamicPhysicianOrdersTable({ patientId, initialOrders, isNewborn = false }: { patientId: string, initialOrders: any[], isNewborn?: boolean }) {
   const [orders, setOrders] = useState(initialOrders || []);
   const [isAdding, setIsAdding] = useState(false);
@@ -107,7 +111,7 @@ export default function DynamicPhysicianOrdersTable({ patientId, initialOrders, 
                         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end items-center gap-2">
                             <span className="text-xs italic text-slate-500">Signed by:</span>
                             {order.signature ? (
-                              order.signature.startsWith('/uploads/') ? (
+                              isRenderableImage(order.signature) ? (
                                 <img src={order.signature} alt="Signature" className="h-10 w-auto object-contain rounded border border-slate-200 bg-white inline-block" />
                               ) : (
                                 <span className="text-sm font-medium text-slate-800">{order.signature}</span>

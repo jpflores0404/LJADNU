@@ -2,18 +2,33 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { writeFile } from "fs/promises";
-import path from "path";
+
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+function normalizeImageMimeType(file: File): string {
+  if (file.type && file.type.startsWith("image/")) return file.type;
+  const lowerName = file.name.toLowerCase();
+  if (lowerName.endsWith(".png")) return "image/png";
+  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) return "image/jpeg";
+  if (lowerName.endsWith(".webp")) return "image/webp";
+  if (lowerName.endsWith(".gif")) return "image/gif";
+  return "application/octet-stream";
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error("Uploaded file exceeds 5MB limit");
+  }
+  const bytes = await file.arrayBuffer();
+  const base64 = Buffer.from(bytes).toString("base64");
+  const mimeType = normalizeImageMimeType(file);
+  return `data:${mimeType};base64,${base64}`;
+}
 
 async function processSignature(formData: FormData): Promise<string | undefined> {
   const sigFile = formData.get("signature") as File;
   if (sigFile && sigFile.size > 0) {
-    const bytes = await sigFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fileName = `sig-${Date.now()}-${sigFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await writeFile(path.join(uploadDir, fileName), buffer);
-    return `/uploads/${fileName}`;
+    return fileToDataUrl(sigFile);
   }
   return undefined;
 }
@@ -262,12 +277,7 @@ export async function addUltrasoundResult(patientId: string, formData: FormData)
   const imageFile = formData.get("image") as File;
   let imageUrl: string | null = null;
   if (imageFile && imageFile.size > 0) {
-    const bytes = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fileName = `${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await writeFile(path.join(uploadDir, fileName), buffer);
-    imageUrl = `/uploads/${fileName}`;
+    imageUrl = await fileToDataUrl(imageFile);
   }
 
   const result = await prisma.ultrasoundResult.create({
@@ -294,12 +304,7 @@ export async function editUltrasoundResult(id: string, formData: FormData) {
   const imageFile = formData.get("image") as File;
   let imageUrl: string | undefined = undefined;
   if (imageFile && imageFile.size > 0) {
-    const bytes = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const fileName = `${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await writeFile(path.join(uploadDir, fileName), buffer);
-    imageUrl = `/uploads/${fileName}`;
+    imageUrl = await fileToDataUrl(imageFile);
   }
 
   const result = await prisma.ultrasoundResult.update({
@@ -469,12 +474,7 @@ export async function uploadConsentPhoto(patientId: string, formData: FormData) 
   const imageFile = formData.get("consentPhoto") as File;
   if (!imageFile || imageFile.size === 0) return;
 
-  const bytes = await imageFile.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-  const fileName = `consent-${patientId}-${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await writeFile(path.join(uploadDir, fileName), buffer);
-  const imageUrl = `/uploads/${fileName}`;
+  const imageUrl = await fileToDataUrl(imageFile);
 
   await prisma.maternalPatient.update({
     where: { id: patientId },
