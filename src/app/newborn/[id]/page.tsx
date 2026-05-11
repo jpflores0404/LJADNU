@@ -4,8 +4,15 @@ import { ArrowLeft, Baby, Edit } from "lucide-react";
 import NewbornChartTabs from "@/components/NewbornChartTabs";
 import { notFound } from "next/navigation";
 
-export default async function NewbornChartPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NewbornChartPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; vitalId?: string; alert?: string }>;
+}) {
   const { id } = await params;
+  const { tab, vitalId, alert } = await searchParams;
 
   const newborn = await prisma.newbornRecord.findUnique({
     where: { id },
@@ -59,7 +66,7 @@ export default async function NewbornChartPage({ params }: { params: Promise<{ i
         </Link>
       </div>
 
-      <NewbornChartTabs newborn={serialized} />
+      <NewbornChartTabs newborn={serialized} initialTab={tab} focusVitalId={vitalId} alertReason={alert} />
     </div>
   );
 }

@@ -1,18 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Save, X, ChevronDown, ChevronUp } from "lucide-react";
-import { addLabResult, deleteLabResult } from "@/app/actions/subrecords";
+import { Plus, Trash2, Save, X, ChevronDown, ChevronUp, Edit } from "lucide-react";
+import { addLabResult, deleteLabResult, editLabResult } from "@/app/actions/subrecords";
 
 export default function DynamicLabTable({ patientId, initialLabs }: { patientId: string, initialLabs: any[] }) {
   const [labs, setLabs] = useState(initialLabs || []);
   const [isAdding, setIsAdding] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function handleAdd(formData: FormData) {
     const newLab = await addLabResult(patientId, formData);
     setLabs([newLab, ...labs]);
     setIsAdding(false);
+  }
+
+  async function handleEditSubmit(formData: FormData) {
+    if (!editingId) return;
+    const updatedLab = await editLabResult(editingId, formData);
+    setLabs(labs.map(l => l.id === editingId ? updatedLab : l));
+    setEditingId(null);
   }
 
   async function handleDelete(id: string) {
@@ -21,10 +29,10 @@ export default function DynamicLabTable({ patientId, initialLabs }: { patientId:
     setLabs(labs.filter(l => l.id !== id));
   }
 
-  const InputField = ({ label, name, placeholder }: { label: string, name: string, placeholder?: string }) => (
+  const InputField = ({ label, name, placeholder, defaultValue }: { label: string, name: string, placeholder?: string, defaultValue?: string }) => (
     <div>
       <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{label}</label>
-      <input type="text" name={name} placeholder={placeholder} className="w-full p-2 rounded-lg border border-slate-300 text-slate-900 bg-white text-sm" />
+      <input type="text" name={name} placeholder={placeholder} defaultValue={defaultValue || ''} className="w-full p-2 rounded-lg border border-slate-300 text-slate-900 bg-white text-sm" />
     </div>
   );
 
@@ -35,7 +43,7 @@ export default function DynamicLabTable({ patientId, initialLabs }: { patientId:
             Laboratory Test Results
         </h3>
         <button 
-          onClick={() => setIsAdding(true)}
+          onClick={() => { setIsAdding(true); setEditingId(null); }}
           className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 border border-blue-200"
         >
           <Plus size={16} /> Add Lab Record
@@ -120,13 +128,85 @@ export default function DynamicLabTable({ patientId, initialLabs }: { patientId:
               </div>
             ) : (
                 labs.map(result => {
+                    if (editingId === result.id) {
+                      return (
+                        <form key={result.id} action={handleEditSubmit} className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-200 shadow-sm space-y-8">
+                           <div>
+                              <label className="text-sm font-bold text-emerald-900 uppercase">Date Performed</label>
+                              <input required name="datePerformed" type="date" defaultValue={result.datePerformed} className="p-2.5 rounded-lg border border-emerald-300 bg-white text-slate-900 text-sm mt-1 mb-3 block w-48 shadow-sm" />
+                           </div>
+
+                           {/* Hematology */}
+                           <div>
+                              <h4 className="font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-2 mb-4 text-sm">Hematology (CBC)</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <InputField label="Hemoglobin" name="hemoglobin" placeholder="g/dL" defaultValue={result.hemoglobin} />
+                                <InputField label="Hematocrit" name="hematocrit" placeholder="%" defaultValue={result.hematocrit} />
+                                <InputField label="WBC Count" name="wbcCount" placeholder="x10^9/L" defaultValue={result.wbcCount} />
+                                <InputField label="RBC Count" name="rbcCount" placeholder="x10^12/L" defaultValue={result.rbcCount} />
+                                <InputField label="Platelet Count" name="plateletCount" placeholder="x10^9/L" defaultValue={result.plateletCount} />
+                                <InputField label="MCV" name="mcv" defaultValue={result.mcv} />
+                                <InputField label="MCH" name="mch" defaultValue={result.mch} />
+                                <InputField label="MCHC" name="mchc" defaultValue={result.mchc} />
+                                <InputField label="Neutrophils" name="neutrophils" placeholder="%" defaultValue={result.neutrophils} />
+                                <InputField label="Lymphocytes" name="lymphocytes" placeholder="%" defaultValue={result.lymphocytes} />
+                                <InputField label="Monocytes" name="monocytes" placeholder="%" defaultValue={result.monocytes} />
+                                <InputField label="Eosinophils" name="eosinophils" placeholder="%" defaultValue={result.eosinophils} />
+                                <InputField label="Basophils" name="basophils" placeholder="%" defaultValue={result.basophils} />
+                              </div>
+                           </div>
+
+                           {/* Urinalysis */}
+                           <div>
+                              <h4 className="font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-2 mb-4 text-sm">Urinalysis</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <InputField label="Color" name="urineColor" placeholder="Yellow" defaultValue={result.urineColor} />
+                                <InputField label="Transparency" name="urineTransparency" placeholder="Clear" defaultValue={result.urineTransparency} />
+                                <InputField label="Reaction" name="urineReaction" defaultValue={result.urineReaction} />
+                                <InputField label="pH" name="urinePH" placeholder="6.0" defaultValue={result.urinePH} />
+                                <InputField label="Specific Gravity" name="urineSpecificGravity" placeholder="1.020" defaultValue={result.urineSpecificGravity} />
+                                <InputField label="Glucose" name="urineGlucose" placeholder="Negative" defaultValue={result.urineGlucose} />
+                                <InputField label="Protein" name="urineProtein" placeholder="Negative" defaultValue={result.urineProtein} />
+                                <InputField label="WBC" name="urineWBC" placeholder="/HPF" defaultValue={result.urineWBC} />
+                                <InputField label="RBC" name="urineRBC" placeholder="/HPF" defaultValue={result.urineRBC} />
+                                <InputField label="Epithelial Cells" name="urineEpithelialCells" placeholder="Few/Moderate" defaultValue={result.urineEpithelialCells} />
+                                <InputField label="Other / Microscopic" name="urineMicroscopicOther" defaultValue={result.urineMicroscopicOther} />
+                              </div>
+                           </div>
+
+                           {/* Blood Typing */}
+                           <div>
+                              <h4 className="font-bold text-emerald-800 uppercase border-b border-emerald-200 pb-2 mb-4 text-sm">Blood Typing</h4>
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                                <InputField label="ABO" name="bloodTypeABO" placeholder="A, B, AB, O" defaultValue={result.bloodTypeABO} />
+                                <InputField label="Rh" name="bloodTypeRh" placeholder="Positive/Negative" defaultValue={result.bloodTypeRh} />
+                                <InputField label="Anti-A" name="antiA" defaultValue={result.antiA} />
+                                <InputField label="Anti-B" name="antiB" defaultValue={result.antiB} />
+                                <InputField label="Anti-D" name="antiD" defaultValue={result.antiD} />
+                              </div>
+                           </div>
+
+                           {/* Remarks */}
+                           <div>
+                              <label className="text-sm font-bold text-emerald-900 uppercase">Additional Remarks</label>
+                              <textarea name="remarks" rows={2} defaultValue={result.remarks} placeholder="Any other findings..." className="w-full p-3 rounded-xl border border-emerald-300 bg-white text-slate-900 text-sm mt-1 shadow-sm"></textarea>
+                           </div>
+
+                           <div className="flex justify-end gap-3 pt-4 border-t border-emerald-200">
+                               <button type="button" onClick={() => setEditingId(null)} className="px-5 py-2.5 bg-white text-slate-700 rounded-xl hover:bg-slate-50 border border-slate-300 text-sm font-bold flex items-center gap-2"><X size={16}/> Cancel</button>
+                               <button type="submit" className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 flex gap-2 items-center text-sm font-bold shadow-md"><Save size={16}/> Save Changes</button>
+                           </div>
+                        </form>
+                      )
+                    }
+
                     const isExpanded = expandedId === result.id;
                     const dateDisplay = result.datePerformed || "Unknown Date";
                     const bloodType = result.bloodTypeABO ? `${result.bloodTypeABO} ${result.bloodTypeRh || ""}` : null;
                     const hgb = result.hemoglobin ? `Hgb: ${result.hemoglobin}` : null;
                     
                     return (
-                        <div key={result.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all">
+                        <div key={result.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all group">
                             {/* Header */}
                             <div 
                               onClick={() => setExpandedId(isExpanded ? null : result.id)}
@@ -141,9 +221,14 @@ export default function DynamicLabTable({ patientId, initialLabs }: { patientId:
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(result.id); }} className="text-slate-400 hover:text-rose-500 p-1 bg-white rounded-full transition-colors" title="Delete">
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <button onClick={(e) => { e.stopPropagation(); setEditingId(result.id); setIsAdding(false); setExpandedId(null); }} className="text-slate-400 hover:text-blue-500 p-1 bg-white rounded-full transition-colors" title="Edit">
+                                          <Edit size={16} />
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); handleDelete(result.id); }} className="text-slate-400 hover:text-rose-500 p-1 bg-white rounded-full transition-colors" title="Delete">
+                                          <Trash2 size={16} />
+                                      </button>
+                                    </div>
                                     <div className="text-slate-400 bg-slate-50 p-1 rounded-full">
                                         {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                     </div>

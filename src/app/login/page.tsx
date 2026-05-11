@@ -31,7 +31,6 @@ export default function LoginPage() {
         <div className="absolute top-0 left-0 w-full h-2 bg-blue-500"></div>
         
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">ADNU EHR</h1>
           <p className="text-slate-600">Maternity & Birthing Home</p>
         </div>
 

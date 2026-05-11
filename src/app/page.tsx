@@ -1,9 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Users, Baby, Activity, AlertCircle } from 'lucide-react';
+import { Users, Baby, Activity, AlertCircle, type LucideIcon } from 'lucide-react';
+import {
+  getMaternalCriticalReasons,
+  isMaternalCritical,
+  isNewbornCritical,
+} from '@/lib/criticalAlerts';
 
 export default async function Dashboard() {
-  const [totalMaternal, activeMaternal, totalNewborn, recentAdmissions] = await Promise.all([
+  const [totalMaternal, activeMaternal, totalNewborn, recentAdmissions, activeMaternalVitals, activeNewbornVitals] = await Promise.all([
     prisma.maternalPatient.count(),
     prisma.maternalPatient.count({ where: { status: 'Active' } }),
     prisma.newbornRecord.count(),
@@ -17,10 +22,28 @@ export default async function Dashboard() {
         dateAdmitted: true,
         admittingDiagnosis: true,
         status: true,
-        admissionNumber: true
+        admissionNumber: true,
+        vitalSigns: { orderBy: { createdAt: 'desc' }, take: 1 }
       }
+    }),
+    prisma.maternalPatient.findMany({
+      where: { status: 'Active' },
+      select: { vitalSigns: { orderBy: { createdAt: 'desc' }, take: 1 } }
+    }),
+    prisma.newbornRecord.findMany({
+      where: { status: 'Active' },
+      select: { vitalSigns: { orderBy: { createdAt: 'desc' }, take: 1 } }
     })
   ]);
+
+  // Calculate critical alerts
+  let criticalCount = 0;
+  activeMaternalVitals.forEach(p => {
+    if (p.vitalSigns[0] && isMaternalCritical(p.vitalSigns[0])) criticalCount++;
+  });
+  activeNewbornVitals.forEach(n => {
+    if (n.vitalSigns[0] && isNewbornCritical(n.vitalSigns[0])) criticalCount++;
+  });
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
@@ -50,9 +73,10 @@ export default async function Dashboard() {
         />
         <StatCard 
           title="Critical Alerts" 
-          value={0} 
+          value={criticalCount} 
           icon={AlertCircle} 
-          color="bg-slate-400" 
+          color={criticalCount > 0 ? "bg-rose-500" : "bg-slate-400"} 
+          href="/critical"
         />
       </div>
 
@@ -86,8 +110,15 @@ export default async function Dashboard() {
               ) : (
                 recentAdmissions.map((patient) => (
                   <tr key={patient.id} className="border-b border-white/40 hover:bg-white/30 transition-colors">
-                    <td className="p-4 font-semibold text-slate-900">
+                    <td className="p-4 font-semibold text-slate-900 flex items-center gap-2">
                       {patient.lastName}, {patient.firstName}
+                      {patient.vitalSigns[0] && isMaternalCritical(patient.vitalSigns[0]) && (
+                        <AlertCircle
+                          size={16}
+                          className="text-rose-500 animate-pulse"
+                          title={getMaternalCriticalReasons(patient.vitalSigns[0]).join(" | ")}
+                        />
+                      )}
                     </td>
                     <td className="p-4 text-slate-700">{patient.admissionNumber}</td>
                     <td className="p-4 text-slate-700">
@@ -119,8 +150,20 @@ export default async function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon: Icon, color }: { title: string, value: number, icon: any, color: string }) {
-  return (
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  color,
+  href,
+}: {
+  title: string;
+  value: number;
+  icon: LucideIcon;
+  color: string;
+  href?: string;
+}) {
+  const card = (
     <div className="glass-card p-6 flex items-center gap-5 hover:scale-[1.02] transition-transform duration-300">
       <div className={`${color} p-4 rounded-2xl text-white shadow-lg backdrop-blur-md bg-opacity-90`}>
         <Icon size={26} />
@@ -130,5 +173,13 @@ function StatCard({ title, value, icon: Icon, color }: { title: string, value: n
         <p className="text-2xl font-bold text-slate-900">{value}</p>
       </div>
     </div>
+  );
+
+  if (!href) return card;
+
+  return (
+    <Link href={href} className="block focus:outline-none focus:ring-2 focus:ring-rose-300/80 rounded-2xl">
+      {card}
+    </Link>
   );
 }

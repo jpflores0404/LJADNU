@@ -108,6 +108,9 @@ model MaternalPatient {
   // Status
   status            String   @default("Active")
 
+  // Consent to Care photo
+  consentPhoto      String?
+
   // Timestamps
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -212,6 +215,7 @@ model NurseNote {
   data              String?
   action            String?
   response          String?
+  signature         String?
 
   maternalPatientId String?
   maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
@@ -240,6 +244,7 @@ model PhysicianOrder {
   id                String   @id @default(cuid())
   date              String
   notes             String
+  signature         String?
 
   maternalPatientId String?
   maternalPatient   MaternalPatient? @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
@@ -302,6 +307,7 @@ model UltrasoundResult {
   maternalPatient   MaternalPatient @relation(fields: [maternalPatientId], references: [id], onDelete: Cascade)
   datePerformed     String?
   impression        String?
+  imageUrl          String?  // Newly added to support picture upload
 
   createdAt         DateTime @default(now())
 }

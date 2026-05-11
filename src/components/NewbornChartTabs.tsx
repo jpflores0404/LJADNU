@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import DynamicVitalsTable from "./DynamicVitalsTable";
 import DynamicMedicationTable from "./DynamicMedicationTable";
 import DynamicNurseNotes from "./DynamicNurseNotes";
@@ -10,12 +10,19 @@ import ApgarCalculator from "./ApgarCalculator";
 
 interface NewbornChartTabsProps {
   newborn: any;
+  initialTab?: string;
+  focusVitalId?: string;
+  alertReason?: string;
 }
 
 const TABS = ["Demographics", "APGAR", "Orders", "Vital Signs", "Medications", "Nurse Notes", "Output"];
 
-export default function NewbornChartTabs({ newborn }: NewbornChartTabsProps) {
-  const [activeTab, setActiveTab] = useState("Demographics");
+export default function NewbornChartTabs({ newborn, initialTab, focusVitalId, alertReason }: NewbornChartTabsProps) {
+  const safeInitialTab = useMemo(
+    () => (initialTab && TABS.includes(initialTab) ? initialTab : "Demographics"),
+    [initialTab]
+  );
+  const [activeTab, setActiveTab] = useState(safeInitialTab);
 
   return (
     <div className="glass-card overflow-hidden min-h-[600px]">
@@ -36,6 +43,11 @@ export default function NewbornChartTabs({ newborn }: NewbornChartTabsProps) {
       </div>
 
       <div className="p-6">
+        {alertReason && (
+          <div className="mb-4 rounded-xl border border-rose-300/60 bg-rose-50/70 text-rose-800 px-4 py-3 text-sm">
+            <span className="font-semibold">Critical Alert:</span> {alertReason}
+          </div>
+        )}
         {activeTab === "Demographics" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              <div>
@@ -87,7 +99,14 @@ export default function NewbornChartTabs({ newborn }: NewbornChartTabsProps) {
            <DynamicPhysicianOrdersTable patientId={newborn.id} initialOrders={newborn.physicianOrders} isNewborn={true} />
         )}
 
-        {activeTab === "Vital Signs" && <DynamicVitalsTable patientId={newborn.id} initialVitals={newborn.vitalSigns} isNewborn={true} />}
+        {activeTab === "Vital Signs" && (
+          <DynamicVitalsTable
+            patientId={newborn.id}
+            initialVitals={newborn.vitalSigns}
+            isNewborn={true}
+            focusVitalId={focusVitalId}
+          />
+        )}
         {activeTab === "Medications" && <DynamicMedicationTable patientId={newborn.id} initialMeds={newborn.medications} isNewborn={true} />}
         {activeTab === "Nurse Notes" && <DynamicNurseNotes patientId={newborn.id} initialNotes={newborn.nurseNotes} isNewborn={true} />}
         {activeTab === "Output" && <DynamicOutputChart patientId={newborn.id} initialOutput={newborn.outputCharts || []} isNewborn={true} />}

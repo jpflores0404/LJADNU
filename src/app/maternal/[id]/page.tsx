@@ -4,8 +4,15 @@ import { ArrowLeft, Edit } from "lucide-react";
 import PatientChartTabs from "@/components/PatientChartTabs";
 import { notFound } from "next/navigation";
 
-export default async function MaternalChartPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MaternalChartPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; vitalId?: string; alert?: string }>;
+}) {
   const { id } = await params;
+  const { tab, vitalId, alert } = await searchParams;
   
   const patient = await prisma.maternalPatient.findUnique({
     where: { id },
@@ -47,13 +54,28 @@ export default async function MaternalChartPage({ params }: { params: Promise<{ 
             <p><span className="font-medium text-slate-700">Attending MD:</span> {patient.attendingPhysician || "Unassigned"}</p>
             <p><span className="font-medium text-slate-700">Age:</span> {patient.age} yrs</p>
           </div>
+          {patient.newborns && patient.newborns.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3 items-center">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Linked Infants:</span>
+              {patient.newborns.map((nb) => (
+                <Link key={nb.id} href={`/newborn/${nb.id}`} className="bg-sky-100 hover:bg-sky-200 text-sky-800 px-3 py-1 rounded-full text-xs font-semibold border border-sky-200 transition-colors">
+                  {nb.name} ({nb.gender})
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         <Link href={`/maternal/${id}/edit`} className="bg-white/40 hover:bg-white/80 text-blue-700 px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 border border-white/60 text-sm shadow-sm">
           <Edit size={16} /> Edit Record
         </Link>
       </div>
 
-      <PatientChartTabs patient={JSON.parse(JSON.stringify(patient))} />
+      <PatientChartTabs
+        patient={JSON.parse(JSON.stringify(patient))}
+        initialTab={tab}
+        focusVitalId={vitalId}
+        alertReason={alert}
+      />
     </div>
   );
 }

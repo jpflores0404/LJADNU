@@ -1,17 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Save } from "lucide-react";
-import { addMedication, deleteMedication } from "@/app/actions/subrecords";
+import { Plus, Trash2, Save, Edit, X } from "lucide-react";
+import { addMedication, deleteMedication, editMedication } from "@/app/actions/subrecords";
 
 export default function DynamicMedicationTable({ patientId, initialMeds, isNewborn = false }: { patientId: string, initialMeds: any[], isNewborn?: boolean }) {
   const [meds, setMeds] = useState(initialMeds);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function handleAdd(formData: FormData) {
     const newMed = await addMedication(patientId, isNewborn, formData);
     setMeds([newMed, ...meds]);
     setIsAdding(false);
+  }
+
+  async function handleEditSubmit(formData: FormData) {
+    if (!editingId) return;
+    const updatedMed = await editMedication(editingId, formData);
+    setMeds(meds.map(m => m.id === editingId ? updatedMed : m));
+    setEditingId(null);
   }
 
   async function handleDelete(medId: string) {
@@ -63,14 +71,36 @@ export default function DynamicMedicationTable({ patientId, initialMeds, isNewbo
               <th className="p-3 font-semibold">Time</th>
               <th className="p-3 font-semibold">Route</th>
               <th className="p-3 font-semibold">Given By</th>
-              <th className="p-3 font-semibold w-10"></th>
+              <th className="p-3 font-semibold w-20 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {meds.length === 0 ? (
               <tr><td colSpan={6} className="p-6 text-center text-slate-400 font-medium">No medications recorded. Click &quot;Add Row&quot;.</td></tr>
             ) : (
-              meds.map(m => (
+              meds.map(m => editingId === m.id ? (
+                <tr key={m.id} className="border-b border-slate-100 bg-blue-50/30">
+                  <td colSpan={6} className="p-3">
+                    <form action={handleEditSubmit} className="grid grid-cols-2 md:grid-cols-6 gap-2">
+                      <input required name="medicationName" type="text" defaultValue={m.medicationName} className="p-1.5 rounded border border-slate-300 text-sm md:col-span-2" />
+                      <input required name="dateGiven" type="date" defaultValue={m.dateGiven} className="p-1.5 rounded border border-slate-300 text-sm" />
+                      <input name="timeGiven" type="time" defaultValue={m.timeGiven || ''} className="p-1.5 rounded border border-slate-300 text-sm" />
+                      <select required name="route" defaultValue={m.route} className="p-1.5 rounded border border-slate-300 text-sm bg-white">
+                        <option value="PO">PO</option>
+                        <option value="IM">IM</option>
+                        <option value="IV">IV</option>
+                        <option value="ID">ID</option>
+                        <option value="Ophthalmic">Ophthalmic</option>
+                      </select>
+                      <input required name="givenBy" type="text" defaultValue={m.givenBy} className="p-1.5 rounded border border-slate-300 text-sm" />
+                      <div className="flex gap-1 items-center justify-end md:col-span-6 mt-2">
+                        <button type="button" onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-slate-200 rounded hover:bg-slate-300 text-xs flex items-center gap-1"><X size={14}/> Cancel</button>
+                        <button type="submit" className="px-3 py-1.5 bg-emerald-500 text-white rounded hover:bg-emerald-600 text-xs flex items-center gap-1"><Save size={14}/> Save</button>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              ) : (
                 <tr key={m.id} className="border-b border-slate-100 hover:bg-slate-50 group">
                   <td className="p-3 font-medium text-slate-900">{m.medicationName}</td>
                   <td className="p-3 text-slate-700">{m.dateGiven}</td>
@@ -80,9 +110,14 @@ export default function DynamicMedicationTable({ patientId, initialMeds, isNewbo
                   </td>
                   <td className="p-3 text-slate-500 italic">{m.givenBy}</td>
                   <td className="p-3">
-                    <button onClick={() => handleDelete(m.id)} className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-600 transition-all" title="Delete">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      <button onClick={() => setEditingId(m.id)} className="text-slate-400 hover:text-blue-500" title="Edit">
+                        <Edit size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(m.id)} className="text-slate-400 hover:text-rose-500" title="Delete">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))

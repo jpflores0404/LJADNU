@@ -2,6 +2,21 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { writeFile } from "fs/promises";
+import path from "path";
+
+async function processSignature(formData: FormData): Promise<string | undefined> {
+  const sigFile = formData.get("signature") as File;
+  if (sigFile && sigFile.size > 0) {
+    const bytes = await sigFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const fileName = `sig-${Date.now()}-${sigFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await writeFile(path.join(uploadDir, fileName), buffer);
+    return `/uploads/${fileName}`;
+  }
+  return undefined;
+}
 
 export async function addVitalSign(patientId: string, isNewborn: boolean, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
@@ -15,7 +30,7 @@ export async function addVitalSign(patientId: string, isNewborn: boolean, formDa
       pulseRate: data.pulseRate as string,
       respiratoryRate: data.respiratoryRate as string,
       temperature: data.temperature as string,
-      signature: data.signature as string,
+      signature: await processSignature(formData),
     }
   });
   revalidatePath(isNewborn ? `/newborn/${patientId}` : `/maternal/${patientId}`);
@@ -27,6 +42,26 @@ export async function deleteVitalSign(id: string) {
   await prisma.vitalSign.delete({ where: { id } });
   if (vs?.maternalPatientId) revalidatePath(`/maternal/${vs.maternalPatientId}`);
   if (vs?.newbornRecordId) revalidatePath(`/newborn/${vs.newbornRecordId}`);
+}
+
+export async function editVitalSign(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const signature = await processSignature(formData);
+  const vital = await prisma.vitalSign.update({
+    where: { id },
+    data: {
+      date: data.date as string,
+      time: data.time as string,
+      bloodPressure: (data.bloodPressure as string) || null,
+      pulseRate: data.pulseRate as string,
+      respiratoryRate: data.respiratoryRate as string,
+      temperature: data.temperature as string,
+      ...(signature && { signature }),
+    }
+  });
+  if (vital.maternalPatientId) revalidatePath(`/maternal/${vital.maternalPatientId}`);
+  if (vital.newbornRecordId) revalidatePath(`/newborn/${vital.newbornRecordId}`);
+  return vital;
 }
 
 export async function addMedication(patientId: string, isNewborn: boolean, formData: FormData) {
@@ -53,6 +88,23 @@ export async function deleteMedication(id: string) {
   if (med?.newbornRecordId) revalidatePath(`/newborn/${med.newbornRecordId}`);
 }
 
+export async function editMedication(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const med = await prisma.medication.update({
+    where: { id },
+    data: {
+      medicationName: data.medicationName as string,
+      dateGiven: data.dateGiven as string,
+      timeGiven: (data.timeGiven as string) || null,
+      route: data.route as string,
+      givenBy: data.givenBy as string,
+    }
+  });
+  if (med.maternalPatientId) revalidatePath(`/maternal/${med.maternalPatientId}`);
+  if (med.newbornRecordId) revalidatePath(`/newborn/${med.newbornRecordId}`);
+  return med;
+}
+
 export async function addNurseNote(patientId: string, isNewborn: boolean, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
   const note = await prisma.nurseNote.create({
@@ -66,6 +118,7 @@ export async function addNurseNote(patientId: string, isNewborn: boolean, formDa
       data: data.data as string,
       action: data.action as string,
       response: data.response as string,
+      signature: await processSignature(formData),
     }
   });
   revalidatePath(isNewborn ? `/newborn/${patientId}` : `/maternal/${patientId}`);
@@ -77,6 +130,27 @@ export async function deleteNurseNote(id: string) {
   await prisma.nurseNote.delete({ where: { id } });
   if (note?.maternalPatientId) revalidatePath(`/maternal/${note.maternalPatientId}`);
   if (note?.newbornRecordId) revalidatePath(`/newborn/${note.newbornRecordId}`);
+}
+
+export async function editNurseNote(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const signature = await processSignature(formData);
+  const note = await prisma.nurseNote.update({
+    where: { id },
+    data: {
+      date: data.date as string,
+      time: (data.time as string) || null,
+      shift: data.shift as string,
+      focus: data.focus as string,
+      data: data.data as string,
+      action: data.action as string,
+      response: data.response as string,
+      ...(signature && { signature }),
+    }
+  });
+  if (note.maternalPatientId) revalidatePath(`/maternal/${note.maternalPatientId}`);
+  if (note.newbornRecordId) revalidatePath(`/newborn/${note.newbornRecordId}`);
+  return note;
 }
 
 export async function addOutputChart(patientId: string, isNewborn: boolean, formData: FormData) {
@@ -100,6 +174,22 @@ export async function deleteOutputChart(id: string) {
   await prisma.outputChart.delete({ where: { id } });
   if (oc?.maternalPatientId) revalidatePath(`/maternal/${oc.maternalPatientId}`);
   if (oc?.newbornRecordId) revalidatePath(`/newborn/${oc.newbornRecordId}`);
+}
+
+export async function editOutputChart(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const oc = await prisma.outputChart.update({
+    where: { id },
+    data: {
+      date: data.date as string,
+      shift: data.shift as string,
+      stoolCount: parseInt(data.stoolCount as string) || 0,
+      urineCount: parseInt(data.urineCount as string) || 0,
+    }
+  });
+  if (oc.maternalPatientId) revalidatePath(`/maternal/${oc.maternalPatientId}`);
+  if (oc.newbornRecordId) revalidatePath(`/newborn/${oc.newbornRecordId}`);
+  return oc;
 }
 
 export async function submitApgarScore(newbornId: string, minuteType: string, formData: FormData) {
@@ -136,9 +226,26 @@ export async function addPhysicianOrder(patientId: string, isNewborn: boolean, f
       newbornRecordId: isNewborn ? patientId : undefined,
       date: data.date as string,
       notes: data.notes as string,
+      signature: await processSignature(formData),
     }
   });
   revalidatePath(isNewborn ? `/newborn/${patientId}` : `/maternal/${patientId}`);
+  return order;
+}
+
+export async function editPhysicianOrder(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const signature = await processSignature(formData);
+  const order = await prisma.physicianOrder.update({
+    where: { id },
+    data: {
+      date: data.date as string,
+      notes: data.notes as string,
+      ...(signature && { signature }),
+    }
+  });
+  if (order.maternalPatientId) revalidatePath(`/maternal/${order.maternalPatientId}`);
+  if (order.newbornRecordId) revalidatePath(`/newborn/${order.newbornRecordId}`);
   return order;
 }
 
@@ -151,11 +258,24 @@ export async function deletePhysicianOrder(id: string) {
 
 export async function addUltrasoundResult(patientId: string, formData: FormData) {
   const data = Object.fromEntries(formData.entries());
+  
+  const imageFile = formData.get("image") as File;
+  let imageUrl: string | null = null;
+  if (imageFile && imageFile.size > 0) {
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const fileName = `${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await writeFile(path.join(uploadDir, fileName), buffer);
+    imageUrl = `/uploads/${fileName}`;
+  }
+
   const result = await prisma.ultrasoundResult.create({
     data: {
       maternalPatientId: patientId,
       datePerformed: data.datePerformed as string,
       impression: data.impression as string,
+      imageUrl: imageUrl,
     }
   });
   revalidatePath(`/maternal/${patientId}`);
@@ -166,6 +286,32 @@ export async function deleteUltrasoundResult(id: string) {
   const us = await prisma.ultrasoundResult.findUnique({ where: { id } });
   await prisma.ultrasoundResult.delete({ where: { id } });
   if (us) revalidatePath(`/maternal/${us.maternalPatientId}`);
+}
+
+export async function editUltrasoundResult(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+
+  const imageFile = formData.get("image") as File;
+  let imageUrl: string | undefined = undefined;
+  if (imageFile && imageFile.size > 0) {
+    const bytes = await imageFile.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const fileName = `${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    await writeFile(path.join(uploadDir, fileName), buffer);
+    imageUrl = `/uploads/${fileName}`;
+  }
+
+  const result = await prisma.ultrasoundResult.update({
+    where: { id },
+    data: {
+      datePerformed: data.datePerformed as string,
+      impression: data.impression as string,
+      ...(imageUrl && { imageUrl }),
+    }
+  });
+  revalidatePath(`/maternal/${result.maternalPatientId}`);
+  return result;
 }
 
 export async function addLabResult(patientId: string, formData: FormData) {
@@ -217,6 +363,51 @@ export async function deleteLabResult(id: string) {
   const lab = await prisma.labResult.findUnique({ where: { id } });
   await prisma.labResult.delete({ where: { id } });
   if (lab) revalidatePath(`/maternal/${lab.maternalPatientId}`);
+}
+
+export async function editLabResult(id: string, formData: FormData) {
+  const data = Object.fromEntries(formData.entries());
+  const result = await prisma.labResult.update({
+    where: { id },
+    data: {
+      datePerformed: data.datePerformed as string,
+      remarks: (data.remarks as string) || null,
+
+      wbcCount: (data.wbcCount as string) || null,
+      rbcCount: (data.rbcCount as string) || null,
+      hemoglobin: (data.hemoglobin as string) || null,
+      hematocrit: (data.hematocrit as string) || null,
+      mcv: (data.mcv as string) || null,
+      mch: (data.mch as string) || null,
+      mchc: (data.mchc as string) || null,
+      neutrophils: (data.neutrophils as string) || null,
+      lymphocytes: (data.lymphocytes as string) || null,
+      monocytes: (data.monocytes as string) || null,
+      eosinophils: (data.eosinophils as string) || null,
+      basophils: (data.basophils as string) || null,
+      plateletCount: (data.plateletCount as string) || null,
+
+      urineColor: (data.urineColor as string) || null,
+      urineTransparency: (data.urineTransparency as string) || null,
+      urineReaction: (data.urineReaction as string) || null,
+      urinePH: (data.urinePH as string) || null,
+      urineSpecificGravity: (data.urineSpecificGravity as string) || null,
+      urineGlucose: (data.urineGlucose as string) || null,
+      urineProtein: (data.urineProtein as string) || null,
+      urineWBC: (data.urineWBC as string) || null,
+      urineRBC: (data.urineRBC as string) || null,
+      urineEpithelialCells: (data.urineEpithelialCells as string) || null,
+      urineMicroscopicOther: (data.urineMicroscopicOther as string) || null,
+
+      bloodTypeABO: (data.bloodTypeABO as string) || null,
+      bloodTypeRh: (data.bloodTypeRh as string) || null,
+      antiA: (data.antiA as string) || null,
+      antiB: (data.antiB as string) || null,
+      antiD: (data.antiD as string) || null,
+    }
+  });
+  revalidatePath(`/maternal/${result.maternalPatientId}`);
+  return result;
 }
 
 export async function updateBloodTyping(patientId: string, formData: FormData) {
@@ -272,4 +463,32 @@ export async function deletePostpartumRecord(id: string) {
   const pp = await prisma.postpartumRecord.findUnique({ where: { id } });
   await prisma.postpartumRecord.delete({ where: { id } });
   if (pp) revalidatePath(`/maternal/${pp.maternalPatientId}`);
+}
+
+export async function uploadConsentPhoto(patientId: string, formData: FormData) {
+  const imageFile = formData.get("consentPhoto") as File;
+  if (!imageFile || imageFile.size === 0) return;
+
+  const bytes = await imageFile.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  const fileName = `consent-${patientId}-${Date.now()}-${imageFile.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
+  const uploadDir = path.join(process.cwd(), "public", "uploads");
+  await writeFile(path.join(uploadDir, fileName), buffer);
+  const imageUrl = `/uploads/${fileName}`;
+
+  await prisma.maternalPatient.update({
+    where: { id: patientId },
+    data: { consentPhoto: imageUrl },
+  });
+
+  revalidatePath(`/maternal/${patientId}`);
+  return imageUrl;
+}
+
+export async function removeConsentPhoto(patientId: string) {
+  await prisma.maternalPatient.update({
+    where: { id: patientId },
+    data: { consentPhoto: null },
+  });
+  revalidatePath(`/maternal/${patientId}`);
 }

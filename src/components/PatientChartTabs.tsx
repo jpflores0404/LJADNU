@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import DynamicVitalsTable from "./DynamicVitalsTable";
 import DynamicMedicationTable from "./DynamicMedicationTable";
 import DynamicNurseNotes from "./DynamicNurseNotes";
@@ -12,15 +12,23 @@ import BloodTypingForm from "./BloodTypingForm";
 import PostpartumMonitoringForm from "./PostpartumMonitoringForm";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import ConsentPhotoUpload from "./ConsentPhotoUpload";
 
 interface PatientChartTabsProps {
   patient: any;
+  initialTab?: string;
+  focusVitalId?: string;
+  alertReason?: string;
 }
 
 const TABS = ["Demographics", "Orders", "Vital Signs", "Medications", "Nurse Notes", "Output", "Labs", "Blood Type", "Ultrasound", "Postpartum", "Newborns"];
 
-export default function PatientChartTabs({ patient }: PatientChartTabsProps) {
-  const [activeTab, setActiveTab] = useState("Demographics");
+export default function PatientChartTabs({ patient, initialTab, focusVitalId, alertReason }: PatientChartTabsProps) {
+  const safeInitialTab = useMemo(
+    () => (initialTab && TABS.includes(initialTab) ? initialTab : "Demographics"),
+    [initialTab]
+  );
+  const [activeTab, setActiveTab] = useState(safeInitialTab);
 
   return (
     <div className="glass-card overflow-hidden min-h-[600px]">
@@ -41,6 +49,11 @@ export default function PatientChartTabs({ patient }: PatientChartTabsProps) {
       </div>
 
       <div className="p-6">
+        {alertReason && (
+          <div className="mb-4 rounded-xl border border-rose-300/60 bg-rose-50/70 text-rose-800 px-4 py-3 text-sm">
+            <span className="font-semibold">Critical Alert:</span> {alertReason}
+          </div>
+        )}
         {activeTab === "Demographics" && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              <div>
@@ -110,6 +123,10 @@ export default function PatientChartTabs({ patient }: PatientChartTabsProps) {
                   <div className="flex flex-col"><span className="text-slate-400 text-xs">Sunken Eye</span><span className="font-medium">{patient.sunkenEye || "—"}</span></div>
                 </div>
              </div>
+
+             <div className="col-span-full">
+               <ConsentPhotoUpload patientId={patient.id} currentPhoto={patient.consentPhoto || null} />
+             </div>
           </div>
         )}
 
@@ -117,7 +134,9 @@ export default function PatientChartTabs({ patient }: PatientChartTabsProps) {
           <DynamicPhysicianOrdersTable patientId={patient.id} initialOrders={patient.physicianOrders} />
         )}
 
-        {activeTab === "Vital Signs" && <DynamicVitalsTable patientId={patient.id} initialVitals={patient.vitalSigns} />}
+        {activeTab === "Vital Signs" && (
+          <DynamicVitalsTable patientId={patient.id} initialVitals={patient.vitalSigns} focusVitalId={focusVitalId} />
+        )}
         {activeTab === "Medications" && <DynamicMedicationTable patientId={patient.id} initialMeds={patient.medications} />}
         {activeTab === "Nurse Notes" && <DynamicNurseNotes patientId={patient.id} initialNotes={patient.nurseNotes} />}
         {activeTab === "Output" && <DynamicOutputChart patientId={patient.id} initialOutput={patient.outputCharts || []} />}

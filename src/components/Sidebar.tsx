@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Baby, Settings, LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
@@ -17,9 +18,21 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 glass-sidebar text-white flex-shrink-0 min-h-screen relative">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold tracking-tight">ADNU EHR</h1>
-        <p className="text-blue-200 text-sm mt-1">Maternity & Birthing Home</p>
+      <div className="p-4 flex flex-col items-center gap-2">
+        <div className="bg-white rounded-lg px-3 py-2 shadow-sm">
+          <Image 
+            src="/logo.png" 
+            alt="Genesis Logo" 
+            width={100} 
+            height={34} 
+            className="object-contain"
+            style={{ width: "auto", height: "auto" }}
+            priority
+          />
+        </div>
+        <div className="text-center">
+          <p className="text-blue-200 text-xs">Maternity & Birthing Home</p>
+        </div>
       </div>
       
       <nav className="mt-6">
